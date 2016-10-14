@@ -1,0 +1,146 @@
+# 刘兵《Entity and aspect extraction for opinion mining 》笔记
+
+这是一本书的一个章节（49页），书名叫《Data mining and knowledge discovery for big data》2014年Springer出版。
+
+## Introduce
+介绍了一些Opinion Mining的背景，这里不说。
+
+survey book: 
+1. Pang and Lee(2008)
+2. Liu(2012)
+
+三种粒度：篇章级、句子级、方面级
+
+篇章级：篇章级情感分类可能是最广泛的研究问题。
+句子级：对文档的单个句子进行情感分类，但不是每个句子都包含意见的。所以第一个任务就是判断句子是否包含意见，被称为『主观性分类』。
+方面级：篇章级和句子级虽然有许多应用场景，但是一个被分为正向的句子中，并非所有aspect都是正向的。所以需要细化到aspect。
+
+"Aspect-based opinion mining"第一次在Hu and Liu(2014)被提出，当时叫"Feature-based opinion mining"。
+它的基本任务是提取和概况人们表达的实体和方面的意见，包含三个核心子任务：
+1. 识别和提取实体
+2. 识别和提取实体的方面
+3. 计算实体和实体方面的情感倾向
+
+"I brought a Sony camera yesterday, and its picutre quality is great." 它的asepct为picture quality，实体为Sony camera。
+本章节针对这两个任务进行展开。
+一些研究者用feature和object表达aspect和entity，也有一些研究者不区分aspect和entity，直接看作opinion target。
+
+## Aspect-based Opinion Mining Model
+
+### Model Concepts
+
+#### Defintion: entity
+一个entity可以是产品、服务、事件、组织或者话题。它关联着一个pair, e:(T,W): T为组件(components(or parts))的层级结构， W为e的属性(attribute)。每个component或者sub-component也有它自己的属性>
+
+例子：entity iPhone 有一系列component（如battery和screen）和一系列attribute（如voice quality、size和weight）battery组件也有它自己的属性（如bettery life和battery size）
+
+该定义可以表达为一棵树。
+
+#### Definition: aspect and aspect expression
+
+在实战中，简化该定义经常是有效的，因为nlp很难，学习层级结构更难。所以，我们简化和摧毁树结构到两级结构，用aspects来表达components和attributes。在简化的树中，根节点为entity，二阶节点为aspect。
+
+aspect expression 是一个在文本中出现的实际单词或短语。
+它经常为名词或名词短语，但也有动词、动词短语、形容词、副词。
+我们把句子中的以名词或名词短语形式出现的aspect expression成为explicit aspect expression。其他形式就成为implicit aspect expressions。implicit较为复杂。
+
+#### Definition: entity expression
+entity expression是出现在文本中指示一个特定entity的实际单词或短语。
+
+#### Defintion: opinion holder
+表达意见的人或组织，经常被称为opinion sources
+
+#### Definition: opinion
+opinion有两个主要类型：regualr opinions和comparative opinions(Liu, 2010;Liu,2012)
+
+五元组：
+$(e_i,a_{ij},oo_{ijkl},h_k,t_l)$
+
+当一个意见描述entity整体，一般aspect用GENERAL表达。
+
+
+#### Model of entity
+
+entity $e_i$可以用整体和一个有限的aspect集合$A_i=\{a_{i1},a_{i2},…,a_{in}\}$表达。
+entity可以用一个entity expression集合来表示，$OE_i=\{oe_{i1},oe_{i2},…,oe_{is}\}$
+每个aspect $a_{ij} \in A_{id}$可以用一个aspect expression集合表示，$AE_{ij}=\{ae_{ij1},ae_{ij2},…,ae_{ijm}\}$
+
+#### Model of opinionated document
+
+一篇包含意见的文档d包含来自意见持有者集合$\{h_1,h_2,…,h_p\}$的关于实体集合$\{e_1,e_2,…,e_r\}$的意见。
+每个实体$e_i$的意见可以用entity本身和aspects $A_{id}$表达。
+
+#### Objective of opinion mining
+目标是挖掘Document中的五元组
+
+### Aspect-based Opinion Summary
+略
+
+## Aspect Extration
+
+aspect extaction和entity extration都归属于信息抽取，目标都是从无结构文本中自动抽取结构化信息。但是传统的信息抽取技术经常是应用于正式文本（新闻、论文等），对于opinion mining application就有困难。我们目标是从包含意见的文档中抽取细粒度的信息（reviews, blogs and forum discussions），其中包含着大量的噪音和有着独特的特征。所以，设计针对于opinion document的抽取算法是有必要的。
+
+当前的研究主要基于在线评论，通常有两种格式：
+1. Pros, Cons and the detailed review，如某些手机网站
+2. Free format
+
+本文主要针对格式2。
+
+### Extraction Approaches
+
+这里只介绍近年(2014)aspect抽取的主要方法。
+正如前面所说的，aspect有两种类型：explicit和implicit。我们先讨论explicit。
+我们把现有的提取方法分类三个主要类型：
+1. language rule
+2. sequence models
+3. topic models
+
+#### Exploiting Language Rules
+
+基于语言规则的系统在信息抽取领域有着很长的使用历史。这些规则基于上下文模式，获取文本中一个或多个terms的不同特性或特性。在评论中，我们使用aspects和opinion word或其他词语之间的语法关系来推导提取规则。
+
+**Hu and Liu(2014)**第一个提取使用关联规则来提取aspects，主要步骤：
+1. 找出频繁名词和名词短语作为frequent aspects
+2. 使用aspects和opinion words的关系来识别非频繁的aspect。
+
+使用frequent名词和名词短语作为aspect简单有效
+
+**Blair-Goldensohn et al.(2008)**通过考虑有情感的句子中的名词短语或指示情感的一些句法模式来改进算法。几个过滤方法被应用来移除不像的aspect，例如，移除那些附近没有已知情感词的aspect。
+基于frequency的思路后来也被应用。**(Popescu and Etzioni, 2005; Ku et al., 2006; Moghaddam and Ester, 2010; Zhu et al., 2009; Long et al., 2010).**
+
+用改进的opinion word和aspect关系来提取aspect的思路可以被归为使用依存关系。
+**Zhuang et al.(2006)**使用依存关系来从影评中提取aspect-opinion pairs。
+**Wu et al.(2009)**用了一个短语依存句法分析工具来提取名词短语和动词短语作为aspect候选。与一般的依存句法分析工具不同，短语依存句法分析工具识别短语的依存关系。**Kessler and Nicolov(2009)**也用了依存关系。
+
+**Wang and Wang(2008)**提出了一个同时识别aspect和opinion word的方法。给定种子opinion words，用bootstrapping的方法来交替识别aspect和opinion word。互信息（mutual information）被应用于衡量潜在aspect和opinion word的关联程度。另外，语言规则被用于识别非频繁的aspects和opinion words.类似的bootstrapping思路也在**Hai et al.(2012)**提出。
+
+Double propagation(**Qiu et al.,2011**)进一步发展了前面的思路。像**Wang and Wang(2008)**，该方法只需要一个初始的种子opinion words。它观察到意见几乎都是有target的，而且句子中的aspect和opinion word有自然的关系，因为opinion word用来修饰target。此外，它发现opinion words之间有关系，aspects也是。所以，opinion words可以通过已识别的aspect来识别，aspect也可以通过已识别的opinion word来识别。已抽取的opinion word和aspect可以用来识别新的opinion word和aspect。这个传播过程执行到不在有新的opinion word和aspect被发现。因为这个过程包含opinion word和aspect，所以叫double propagation。抽取规则根据opinion word和aspect之间的不同关系来设计。
+
+Double Propagation方法在中等大小的语料中有效，但是对于大的或者小的语料，它可能会造成低precision和低recall。原因是基于直接依存关系的规则在语料中有很大几率引入噪音，而对于小语料来说，规则太局限。为了克服这些缺点，**Zhang et al.(2010)**扩展了double propagation。它包括两步：aspect extraction和aspect ranking。对于aspect extraction，依然使用double propagation。但是，引入了一些新的语言模式（e.g.,part-whole关系规则）。提取之后，它将候选aspect根据重要性排序，考虑两个主要因素：aspect candidate和aspect frequency。前者描述了一个候选aspect多像一个真实的aspect，有三个线索：第一个就是aspect经常被多个opinion word修饰；第二个是aspect可以用多个part-whole规则提取，比如，在car领域，"the engine fo the car"和"the car has a big engine"，我们推断"engine"是car的一个aspect；第三个是aspect可以用opinion word修饰关系、part-whole关系和其他语言规则联合提取。如果一个aspect不仅被opinion word修饰，而且通过part-whole提取，我们可以推断他是一个有着high confidence的真实aspect，比如"there is a bad hole in the mattress"，它强烈地指示了"hole"是mattress的一个aspect，因为他被"bad"修饰和在part-whole关系里。此外，在opinion words、linguistic pattern和aspect之间有一些互相加强的关系。如果一个形容词修饰多个真实aspect，它就很可能是一个good opinion word。类似地，如果一个候选aspect通过许多opinion words和linguistic pattern提取出来，它就很可能是一个真实aspect。所以**Zhang et al.**用HITS算法(Klernberg, 1999)来衡量aspect relevance。Aspect Frequency是影响aspect ranking另一个重要因素。
+
+**Liu et al.(2012)**也利用了opinion word和aspect的关系来提取。但是他们把aspect和opinion word之间的opinion relation identification看作是词对齐任务（word alignment）。他们用基于词的翻译模型(Brown et al.,1993)来实现单语词对齐。基本上，aspect和opinion word的关联用翻译概率来衡量，能比语言规则更准确更有效地获取aspect和opinion word之间的opinion relations。
+
+**Li et al.,(2012a)**提出了一个领域自适应的方法来抽取跨领域的aspect和opinion word。在一些情况下，目标领域没有标注数据，但源领域有大量标注数据。基本的思路就是利用源领域抽取的知识来帮助识别目标领域的aspect和opinion word。该方法包括两个步骤：（1）识别一些共同的opinion words作为种子，然后从源领域中提取高质量的opinion aspect种子。（2）一个叫"Relational Adaptive bootstrapping"的bootstrapping方法用来扩展这些种子。首先，通过在源领域的标注数据和目标领域的新标注数据来迭代训练一个跨领域的分类器，然后用它来预测目标未标注数据的label。第二，top预测的aspect和opinion word被挑选来作为候选。第三，利用之前迭代中提取的句法规则来构建一个aspect和opinion word之间的二部图。使用基于图的得分计算算法获取top候选，分别加入到aspect和opinion word list中。
+
+除了利用aspect和opinion word的关系以外，**Popescu and Etzioni(2005)**提出了利用一个上下文中的鉴别关系来提取aspects的方法，也就是aspects和产品class的关系。他们首先提取频繁的名词短语作为候选aspect，然后使用候选和一些产品class的部分整体关系鉴别器(meronymy discriminators)之间的PMI评估每个候选词。例如"scanner"类别的meronymy discriminators是像"of scanner", "scanner has","scanner comes with"等模式。PMI公式
+$$PMI(a,d)={hits(a\land d)\over hits(a)hits(d)}$$
+a是候选aspect，d为meronymy discriminators。通过搜索引擎实现hits()。
+该算法也用WordNet的is-a层次结构和形态结构线索从attribute中区别components/parts。
+
+**Kobayashi et al.(2007)**提出了一个从blog中提取aspect-evaluation和aspect-of关系的方法，它利用了aspect, opinion expression和product class的关联关系。例如，在aspect-evaluation pair提取中，evaluation expression首先由词典决定。然后，句法关系被用来找出它对应的aspect来生成候选pair。这些候选pairs通过一个由结合上下文和统计线索这两种信息训练得到的分类器来测试和验证。上下文线索为句子中词的句法关系，它可以由依存语法决定；统计学线索是标注的aspect和evaluations的共现。
+
+
+#### Squence Models
+
+主要是Hidden Markov Model和Conditional Random Fields。有监督学习。
+
+##### Hidden Markov Model
+
+**Jin et al.(2009a and 2009b)**利用词汇化的HMM来从评论中抽取product aspects和opinion expression。与传统HMM不同，他们将如POS和词汇模式融入到HMM中。例如，一个观察变量用pair($word_i$,$POS(word_i)$)表示。
+
+##### Conditional Random Fields
+
+**Jakob and Gurevych(2010)**利用CRF从包含意见的句子中抽取opinion target(or aspects)。他们用Token, POS, Short Dependency Path, Word Distance作为特征输入。使用Inside-Outside-Begin(IOB)标注方案。
+
+**Li et al.,2010a**做了类似的工作。
+
