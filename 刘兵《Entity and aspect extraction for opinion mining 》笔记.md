@@ -1,5 +1,7 @@
 # 刘兵《Entity and aspect extraction for opinion mining 》笔记
 
+> 转载请声明出处。
+
 这是一本书的一个章节（49页），书名叫《Data mining and knowledge discovery for big data》2014年Springer出版。
 
 ## Introduce
@@ -142,5 +144,125 @@ a是候选aspect，d为meronymy discriminators。通过搜索引擎实现hits()�
 
 **Jakob and Gurevych(2010)**利用CRF从包含意见的句子中抽取opinion target(or aspects)。他们用Token, POS, Short Dependency Path, Word Distance作为特征输入。使用Inside-Outside-Begin(IOB)标注方案。
 
-**Li et al.,2010a**做了类似的工作。
+**Li et al.,2010a**做了类似的工作。为了能对句子级中的长距离的用连接词("and", "or", "but")连接的依存关系，以及aspect，positive opinion和negative opinion之间的深层依存句法建模，他们使用了skip-tree CRF模型来发现产品aspect和opinoin。
+
+
+#### Topic Model
+
+主题模型在NLP和文本挖掘中被广泛运用，它基于文档的多个主题分布和每个主题的词分布。一个主题模型是文章的生成模型(generative model)。通常，它指定文章的生成过程。具体看《LDA数学八卦》。
+
+主题模型可以用于aspect抽取。我们可以认为每个aspect是一个元语言模型，即词语的多项分布。虽然这样的表示很难解析为aspect，但是它的优势就是表达一样或相近aspect的不同词语可以被自动地聚到一起。如今，用主题模型抽取aspect有着大量的研究。他们基本上是吸收和扩展了pLSA(Hofmann, 2011)和LDA模型(Blei et al., 2003)。
+
+##### Probabilistic Latent Semantic Analysis
+
+原理请阅读《LDA数学八卦》。
+
+对于aspect抽取任务，我们可以把产品aspect当做opinion document中的潜在topic。**Lu et al.(2009)**提取了在短文本中发现aspect和聚类的方法。他们假设每条评论都可以被解析成为格式为<head term, modifier>的opinion phrase，和利用head term和modifiers的共现信息将这个opinion phrase融入pLSA模型。通常，head term是一个aspect，modifier是opinion word。提出的方法定义k元语言模型：$\Theta = (\theta_1,\theta_2,…,\theta_k)$作为k主题模型，每一个都是head terms的多项分布。注意每个modifier都可以用一个header term的集合表示，表示公式为：
+$$d(w_m)=\{w_h|(w_m,w_h)\in T\}$$
+$w_h$表示head term，$w_m$表示modifier。
+
+实际上，一个modifier可以被当做一个混合模型的一个sample。
+$$p_{d(w_m)}(w_h)=\sum_{j=1}^k[\pi_{d(w_m),j}p(w_h|\theta_j)]$$
+$\pi_{d(w_m),j}$是第j个aspect的特定modifier的混合权重(modifier-specific mixing weight)，加起来等于1。modifiers$V_m$集合的对数似然值(log-likelihood)为
+$$log\ p(V_m|\Delta)=\sum_{w_m\in v_m}\sum_{w_h\in v_h}\{c(w_h,d(w_m))\times log\ \sum_{j=1}^k[\pi_{d(w_m),j}p(w_h|\theta_j)]\}$$
+$c(w_h,d(w_m))$为head term$w_h$和modifiers$w_m$的共现次数，$\Delta$为所有模型参数集合。
+
+利用EM算法，k主题模型可以被估计，aspect expression可以被聚合。另外，**Lu et al.**使用了共轭先验融入人类知识来制定aspect的聚类。因为提出的方法对head terms和modifier的共现建模，所以他可以利用更多有意义的句法关系。
+
+**Moghaddam and Ester(2011)**通过加入对评论的潜在排序信息到模型来提取aspect和他们的对应排序，扩展了以上pLSA模型。
+
+但是pLSA方法的主要缺点就是它是内在转换，即没有直接的方法把已学习的模型应用到新文档。在pLSA中，集合中的每个文档d用一个混合系数$\theta$来表示，但是它并不对集合以外的文档进行定义。
+
+##### Latent Dirichlet Allocation(LDA)
+
+基本的LDA模型请阅读《LDA数学八卦》
+
+基于LDA的模型在几个研究中被用于aspect抽取。**Titov and McDonald(2008a)**指出全局的主题模型(像pLSA和LDA)可能不适合发现aspect。pLSA和LDA都用了文档的词袋模型表示，它依赖于主题的分布差异和词语的共现来识别每个主题中的topic-word概率分布。但是，对于opinion文章(如review)来说，他们非常不同。也就是，每个文档都是讨论相同的aspect，这使得全局主题模型(global topic model)效率低和只对entities发现有效(如品牌和产品名称)。为了解决这个问题，他们提取了多粒度的LDA(MG-LDA)来发现aspect，它对global topic和local topic这两个不同类型的主题进行建模。像在pLSA和LDA中，对于一篇文章的global topic分布是固定的。但是，local topic的分布则允许不同。一个文档中的一个词是要么从global topic的多项分布，要么从这个词的local context特定的local topic的多项分布。它假设aspect会被local topic获取，global topic会获取评价item的属性。例如，一条London hotel的评论："…public transport in London is straightforward, the tube station is about an 8 minute walk… or you can get a bus for \$1.50"。这条评论可以当做是global topic *London* (words:"London","tube","\$")和local topic(aspect) *location* (words:"transport", "walk", "bus").
+
+MG-LDA能区分local topics。但是由于local topics和ratable aspects之间的many-to-one映射，这个对应是不明显的。它缺乏topics到aspects的直接分配。为了解决这个问题，**Titov and McDonald(2008b)**扩展了MG-LDA模型和构建了一个文本和aspect rating的联合模型，叫做Multi-Aspect Sentiment model(MAS)。它包含两个部分：第一个部分是基于MG-LDA来构建代表ratable aspect的topics；第二部分是针对每个aspect的一系列分类器(sentiment predictors),它在aspect-specific rating的帮助下推断local topics和aspect的映射。他们的目标是利用rating信息来识别更多aspect。
+
+LDA的思想也被应用和扩展在(**Branavan et al.,2008; Lin and He, 2009; Brody and Elhadad, 2010; Zhao et al., 2010; Wang et al., 2010; Jo and Oh, 2011; Sauper et al., 2011; Moghaddam and Ester, 2011; Mukajeee and Liu, 2012**)。Branavan利用*Format 1*的评论格式的关键词来协助提取aspect。关键词是基于分布的和正字的(orthographic)属性来聚类，隐topic model应用于review文本。然后，一个最终的图模型将他们两个结合。**Lin and He(2009)**提出了一个join topic-sentiment model(JST)，它通过加入一个sentiment层来扩展了LDA。它能从文本中同时发现aspect和sentiment。**Brody and Elhadad(2010)**提出了用local版本的LDA来识别aspect，它作用于句子而非文档，利用了小量的直接对应于aspect的topics。**Zhao et al.(2010)**提出了一个MaxEnt-LDA混合模型来联合发现aspect words和aspect-specific opinion words，它能利用句法特征来帮助区分aspects和opinion words。**Wang et al.(2010)**提出了一个回归模型基于学习了的潜在aspects来推断aspect ratings和aspect weights。**Jo and Oh(2010)**提出了一个*Aspect and Sentiment Unification Model(ASUM)*来对面向不同asepct的sentiment建模。**Sauper et al.(2010)**提出一个联合模型，它只工作于已经从reviews中提取的小片段，联合了HMM和topic modeling，其中HMM拟合了词类型序列(aspect, opinion word, or background word)。**Moghaddam and Ester(2011)**提出了一个叫ILDA的模型，它基于LDA和加入了潜在aspect和rating建模。ILDA能看做一个生成过程：首先生成一个aspect，随后生成它的rating。特别地，对于生成每个opinion phrase，ILDA首先从LDA模型中生成aspect$a_m$，最后。一个head term$t_m$和一个sentiment$s_m$从$a_m$和$r_m$的条件分布中生成。**Mukajeee and Liu(2012)**提出了两个模型(SAS and ME_SAS)来使用种子对aspect和aspect specific sentiments联合建模，从而从语料发现aspects。种子反映了用户对发现特定aspects的需求。
+
+其他关于topic model相关工作有topic-sentiment model(TSM)。**Mei et al.(2007)**提出这个模型来对在blog中的topic和sentiment联合建模，它用了一个positive sentiment model和一个negative sentiment model附加在aspect模型上。他们在文章级别进行情感分析而不是在aspect级别。在(**Su et al., 2008**)中，作者也提出了一个基于mutual reforcement方法的聚类算法来识别aspect。类似的工作有(**Scaffidi et al., 2007**)，他们提出了一个针对于产品aspect的语言模型，它假设产品aspect在产品review文本中比在通用英文文本中更频繁提到。但是，当语料规模小的时候，统计是不可靠的。
+
+总的来说，主题建模是一个强大和灵活的建模工具。它也在概念上和在数学上都很优秀。但是，它只适合找出一些general/rough的aspects，难以找到细粒度的或者准确的aspects。我们认为它过于以统计为中心，有局限。如果我们往自然语言和知识中心转移，提出更平衡的方法，可能会有更多成果。
+
+#### Miscellaneous Methods
+
+**Yi et al.(2003)**提出基于likelihood-ratio test的方法提出aspect。**Bloom et al.(2007)**人工构建了aspects的分类，指示aspect类型。他们也通过review的一个样本来构建aspect词典，他们人工检验这些种子词典，用WordNet来挖掘额外的词语。**Lu et al.(2010)**利用Freebase来获取一个topic的aspects，用它们来组织零散的意见，生成一个结构化的意见摘要。**Ma and Wan(2010)**利用Centering theory(**Grosz et al.1995**)来从新闻评论中提取评价对象。**Ghani et al.(2006)**把aspect抽取当成分类问题，用了传统的监督学习方法和半监督学习方法来抽取产品aspects。**Yu et al.(2011)**使用一个叫one-class SVM的部分监督方法来提取aspects，只需要标注一些正例(是aspect的例子)。他们只从Pros和Cons抽取aspects。**Li et al.(2012b)**把抽取aspect当做浅层语义解析问题。每个句子构建一棵解析树，其中的结构化的句法信息用来识别aspect。
+
+#### Aspect Grouping and Hierarchy
+
+人名通常会使用不同的词语和表达来描述同一个aspect。例如，*photo*和*picture*在数码相机领域中表达同一个aspect。虽然topic model可以识别和聚合aspect，但是结果并不是细粒度的，因为这样的模型是基于词共现而不是语义。所以，一个topic往往是关于一个general topic的相关词list，而不是表示同一个aspect的词list。例如，一个topic关于*battery*可能包含像*life,battery,charger,long,short*等词语。我们可以清晰地看到，这些词语并不代表同一个东西，虽然他们可能经常共现。我们可以先提取aspect expression，然后把他们聚合到不同的aspect catergories。
+
+聚合指示同一个aspect的aspect expression对opinion应用来说是很关键的。虽然WordNet和其他词典可以帮助这个任务，但是他们由于很多同义词都是领域独立的，所以经常无效。例如，*picture*和*movie*是moview评论的同义词，但是他们在数码相机领域不是同义词，因为*picture*更接近*photo*而*movie*更接近*video*。注意到虽然一个aspect的大部分aspect expressions是领域同义词，但是他们不总是同义词。例如，*expensive*和*cheap*都可以指示*price*这个aspect，但他们不是*price*的同义词。
+
+**Liu, Hu and Cheng(2005)**试图用WordNet同义词集来解决这个问题，但是结果不令人满意，因为WordNet对解决领域独立的同义词方面不够有效。**Carenini et al.(2005)**也提出了一个方法解决这个问题。他们的方法基于使用字符串相似度、同义词和距离衡量来定义的几种相似度矩阵。但是，它要求事先给定一个分类。这个算法合并每一个发现的aspect expression到分类中的一个aspect结点。
+
+**Guo et al.(2009)**提出了一个多层次的潜在语义关联技术（叫mLSA）来聚合产品aspect expression。在第一层，aspect expression的所有词都通过使用LDA被聚合到一个concepts/topics集合中。这个结果用来构建一些潜在topic结构。在第二层，aspect expression通过LDA根据他们的潜在topic结构和上下文片段来被聚合。
+
+**Zhai et al.(2010)**提出了一个半监督方法来将aspect expression聚合到用户自定义的aspect group或category中。每个group代表一个特定的aspect。为了反映用户的需求，他们首先给每个group人工标注一小部分种子。这个系统然后使用基于标注的种子和未标注的样本来将剩余的aspect expression分配到合适的group。这个方法使用了Expectation-Maximization(EM)算法。两块先验知识被使用来为EM提供更好的信息，也就是：(1)共用一些相同的词语的aspect expression更可能属于同一个aspect group;(2)在词典中属于同义词的aspect expression更可能属于同一个aspect group。**Zhai et al.(2011)**进一步提出了一个无监督方法，不需要事先标注样本。此外，它进一步通过词典相似度加强。这个算法也利用了一些自然语言知识来提取更有区分性的分布上下文来帮助聚合。
+
+**Mauge et al.(2012)**使用基于聚类算法的最大熵来聚合aspect。它首先训练一个最大熵分类器来决定两个aspect是同义词的概率。然后，一个无向有权图构建出来。每个节点代表一个aspect。每条边权重代表两个节点的概率。最后，近似图分割方法(approximate graph partitioning method)用来聚合aspect。
+
+与aspect聚合相关的aspect层级用来将产品aspect表示成一棵树或层级。根节点是实体名称。每个非根节点是一个entity的组件或子组件。每一个link都是*part-of*关系。每一个结点关联一系列的aspect。**Yu et al.(2011b)**提出了一个方法来创建aspect层级。这个方法从一个初始层级开始，一个个地插入aspect直到所有aspect被分配。每个aspect通过语义距离学习来插入到最佳位置。**Wei and Gulla(2010)**学习基于aspect hierarchy trees的情感分析。
+
+#### Aspect Ranking
+
+#### Mapping Implicit Aspect Expressions
+
+有许多隐形aspect expression类型。形容词可能是最经常出现的类型。许多形容词修饰或描述一些特定的entity属性。例如，形容词*heavy*通常描述entity的*weight*。*Beautiful*一般用来描述entity的*look*或者*appearance*。也不是说这些形容词只描述这些aspects。他们准确的意思可以是领域独立的。例如，*heavy*在句子*the traffic is heavy*并不描述交通的*weight*。注意一些隐性aspect expression很难提取和映射，例如，*fit in pockets*在句子*This phone will not easily fit in pockets*。
+
+将隐性aspect映射到他们的显性aspect的研究并不多。在**Su et al.(2008)**中，聚类算法被用来映射隐性aspect expression，这些aspect expression被假设为情感词，对应着显性aspect。这个方法利用了显性aspect和情感词之间的相互增强关系来生成一个共现pair。这样的一个pair可能指示着情感词描述aspect，或者aspect关联着情感词。这个算法通过将显性aspect集和和情感词集合分别迭代聚类来挖掘映射关系。在每一词迭代中，在对一个集合聚类之前，使用其他集合的聚类结果来提升集合的pair相似度。集合中的pair相似度由集合内相似度和集合间相似度的线性组合来决定。两项在集合内的相似度是传统的相似度，在集合间的相似度基于aspect和情感词的关联程度来计算。关联程度(或mutual reinforcement relationship)由一个二分图建模。如果一个aspect和opinion word在句子中共现，那么他们是相连的。这些链接也基于共现频数来确定权重。在迭代聚类之后，强连接的aspect和情感词group生成最后的映射。
+
+在**Hai et al.(2011)**中，一个两阶段共现关联规则挖掘方法被提出来匹配隐性aspect(被假设为情感词)的显性aspect。在第一阶段，这个方法生成关联规则，将语料中频繁在句子中共现的pair中的每个情感词作为condition，显性aspect作为consequents。在第二阶段，对consequents(显性aspect)聚类来为每个规则中的情感词生成更加鲁棒的规则。为了应用或测试，给定没有显性aspect的情感词，找出最好的规则簇，然后分配这个簇中的代表性词语作为最后识别的aspect。
+
+**Fei et al.(2012)**聚焦于找到被意见形容词(opinion adjectives)指示的隐性aspect(主要是名词)，例如，为形容词*expensive*识别*price*、*cost*等。他们提出了一个基于词典的方法，尝试从形容词词典中识别出属性名词。他们把问题定义为集合分类问题(colletive classification problem)，它可以利用词语的词典关系(如同义词、反义词、下位词和上位词)来分类。
+
+一些其他相关工作包含在(**Wang and Wang,2008;Yue et al.,2011b**)。
+
+
+#### Identifying Aspects that Imply Opinions
+
+**Zhang and Liu(2011a)**发现在一些指示产品的领域名词和名词短语中aspect可能隐含着opinion。在许多案例中，这些名词不是主观的而是客观的。他们包含的句子也是客观性的句子，但是暗含着正向或者负向的opinion。例如，床褥评论中一个句子*"Within a month, a vally formed in the middle of the mattress."*。这里*valley*指示着床褥的质量，也暗含着负向的opinion。识别这样的aspect和他们的极性是一项非常具有挑战性但是在意见挖掘中非常有用的工作。
+
+**Zhang and Liu**观察到对于含有暗含opinion的一个产品aspect来说，并没有直接修饰它的opinion word，或者修饰它的opinion word有着相同的意见倾向。
+
+**Observation：**没有opinion word直接修饰被评价的产品aspect(*"valley"*)：
+*"Within a month, a vally formed in the middle of the mattress."*
+
+**Observation：**有opinion形容词修饰被评价的产品aspect(*"valley"*)：
+*"Within a month, a bad vally formed in the middle of the mattress."*
+这里，形容词*bad*修饰*valley*。它不像另一个句子中的正向opinion word也修饰*valley*，如，*"good valley"*。所以，如果一个产品aspect被正向和负向opinion形容都修饰的话，它不太可能是一个被评价的产品aspect。
+
+基于这些观察，他们设计了如下两个步骤来识别暗含正向或负向意见的名词产品aspect：
+**Step 1:**候选词识别(Candidate Identification)：这一步决定了每个名词aspect附近的情感上下文。这个直觉是如果一个aspect出现在负向(或正向)的意见上下文中比出现在正向(或负向)上下文更加频繁，我们可以推断它的极性是负向的(或正向的)。一个统计测试(总体比例测试)被用来测试它的显著性。这一步生成一个正向意见的候选aspect列表和一个负向意见的候选aspect列表。
+**Step 2:**剪枝(Pruning)：这一步对两个列表进行剪枝。思路是当一个名词产品aspect被正向和负向opinion word都直接修饰时，它不太可能是被评价的产品aspect。
+
+
+#### Identifying Resource Noun
+
+**Lin(2010)**指出存在一些词或短语类型本身没有情感，但是当他们出现在一些特定的上下文中，它暗含着正向或负向的意见。在情感分析可以到达下一个准确率层次之前，所有这些表达必须要被提取和相关问题必须要被解决。
+
+```
+1. Postive <- consume no or little resource
+2.          | consume less resource
+3. Negative <- consume a large quantity of resource
+4.          |  consume more resource
+         
+Figure 6: 包含资源的表述的情感倾向。
+```
+
+这样的一种表述类型包含了资源，这种情况经常出现在许多应用领域中。例如，*money*在几乎所有领域中是一种资源，*ink*在printer领域中是一种资源，*gas*在car领域中是一种资源。如果一个设备消耗了大量资源，它是不令人满意的(negative)。如果一个设备消耗极少资源，他是令人满意的(positive)。例如，句子*"This laptop needs a lot of battery power"*和句子*"This car eats a lot of gas"*分别在laptop领域和car领域中暗含着负向的情感。这里*gas*和*battery power*都是资源，我们把这些词语成为资源项(*resource terms*，包括词语和短语)。他们是一种特殊的产品aspect。
+
+在包含资源的情感方面，Figure 6中的规则可用(**Liu, 2010**)。规则1和规则3代表了包含资源和暗含情感的常态句子，而规则2和规则4代表了包含资源和暗含情感的比较句式句子，例如，*"this washer uses much less water than my old GE washer"*。
+
+**Zhang and Liu(2011a)**把问题定义为二分图问题，并提出了一个迭代算法来解决问题。这个算法基于如下观察：
+**Observation:**句子中关于资源使用的情感或意见表达经常由如下三元组决定：
+$$(verb, quantifier, noun\_term)$$
+其中，*noun_term*是代表资源的一个名词或名词短语。
+
+这个方法使用这样的三元组来帮助在领域语料中识别资源。模型使用了基于二分图的循环定义来反映*资源使用动词(resource usage verbs，consume*)和*资源项(如，water*)之间特定的增强关系。量词(quantifier)不用在计算，而用在识别候选动词和资源项。这个算法假设给定一个量词列表(不多，可人工构建)。基于循环定义，这个问题通过使用像HITS算法(**Kleinberg, 1999**)这样的迭代算法来解决。为了启动迭代计算，一些全局的*种子资源(seed resources)*被用来发现和评分一些健壮的*资源使用动词*。这些得分然后被应用到任意应用领域的迭代计算的初始化。当算法收敛时，一个排序过的候选资源项列表被识别出来。
+
+
 
